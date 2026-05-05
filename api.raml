@@ -1,0 +1,117 @@
+#%RAML 1.0
+title: Sonata API
+version: v1
+baseUri: https://api.sonata.com/{version}
+mediaType: application/json
+
+securitySchemes:
+  oauth2: !include securitySchemes/oauth2.raml
+
+securedBy: [ oauth2 ]
+
+types:
+  Track: !include dataTypes/Track.raml
+  Playlist: !include dataTypes/Playlist.raml
+  User: !include dataTypes/User.raml
+  Error: !include dataTypes/Error.raml
+
+traits:
+  searchable: !include traits/searchable.raml
+  pageable: !include traits/pageable.raml
+
+resourceTypes:
+  collection: !include resourceTypes/collection.raml
+  item: !include resourceTypes/item.raml
+
+/tracks:
+  type: { collection: { typeName: Track } }
+  get:
+    description: Search for tracks by filters.
+    is: [ searchable, pageable ]
+    responses:
+      200:
+        body:
+          application/json:
+            examples:
+              track: !include examples/track-example.json
+      400:
+        body:
+          application/json:
+            type: Error
+  /{trackId}:
+    type: { item: { typeName: Track } }
+    get:
+      description: Get detailed metadata of a specific track.
+      responses:
+        404:
+          body:
+            application/json:
+              type: Error
+
+/playlists:
+  type: { collection: { typeName: Playlist } }
+  post:
+    description: Create a new empty playlist.
+    responses:
+      201:
+        body:
+          application/json:
+            type: Playlist
+      400:
+        body:
+          application/json:
+            type: Error
+  /{playlistId}:
+    type: { item: { typeName: Playlist } }
+    uriParameters:
+      playlistId: string
+    get:
+      description: View playlist content.
+    put:
+      description: Full edit of playlist metadata.
+    patch:
+      description: Partial update of playlist metadata.
+    delete:
+      description: Delete playlist.
+    
+    /tracks:
+      post:
+        description: Add a track to the playlist.
+        body:
+          application/json:
+            properties:
+              trackId: string
+        responses:
+          201:
+            description: Track added successfully.
+      /{trackId}:
+        uriParameters:
+          trackId: string
+        delete:
+          description: Remove a track from the playlist.
+          responses:
+            204:
+              description: Track removed successfully.
+
+/me:
+  get:
+    description: Get current user profile.
+    responses:
+      200:
+        body:
+          application/json:
+            type: User
+      401:
+        body:
+          application/json:
+            type: Error
+            example: !include examples/error-401.json
+  /history:
+    get:
+      description: Get list of recently played tracks.
+      is: [ pageable ]
+      responses:
+        200:
+          body:
+            application/json:
+              type: Track[]
